@@ -21,15 +21,17 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <!-- 收藏页-->
-        <activity android:name=".ui.LikeActvity"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar">
-        </activity>
+        <activity
+            android:name=".ui.LikeActvity"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"></activity>
         <!--主页-->
-        <activity android:name=".MainActivity" >
+        <activity android:name=".MainActivity">
 
         </activity>
         <!-- 闪屏页-->
-        <activity android:name=".ui.SplashAvtivity">
+        <activity
+            android:name=".ui.SplashAvtivity"
+            android:icon="@drawable/app_icon">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

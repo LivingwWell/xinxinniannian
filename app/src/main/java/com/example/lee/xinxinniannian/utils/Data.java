@@ -1,83 +1,47 @@
 package com.example.lee.xinxinniannian.utils;
 
-import cn.bmob.v3.datatype.BmobFile;
+import cn.bmob.v3.BmobObject;
 
 /**
- * Created by lee on 2018/1/8.
+ * Created by lee on 2018/6/14.
  */
 
-public class Data {
-    private String name;
-    private String momey;
-    private String fenlei;
-    private BmobFile pic;
-    private String url;
-    private int id;
+public class Data extends BmobObject {
+    private String imagerUrl;//图片地址
+    private String webUrl;//链接地址
+    private String fenleil;//分类
 
-    public Data(){
+    public Data() {
 
     }
 
-    public Data(int id, String name, String momey, String fenlei, BmobFile pic, String url) {
-        this.id=id;
-        this.name = name;
-        this.momey = momey;
-        this.fenlei = fenlei;
-        this.pic = pic;
-        this.url = url;
+    public Data( String imagerUrl, String webUrl, String fenleil) {
+        this.imagerUrl = imagerUrl;
+        this.webUrl = webUrl;
+        this.fenleil = fenleil;
     }
 
-    public int getId() {
-        return id;
+    public String getImagerUrl() {
+        return imagerUrl;
     }
 
-    public void setId(int id) {
-        this.id = id;
+    public void setImagerUrl(String imagerUrl) {
+        this.imagerUrl = imagerUrl;
     }
 
-    public String getUrl() {
-        return url;
+    public String getWebUrl() {
+        return webUrl;
     }
 
-    public void setUrl(String url) {
-        this.url = url;
+    public void setWebUrl(String webUrl) {
+        this.webUrl = webUrl;
     }
 
-
-    public String getName() {
-        return name;
+    public String getFenleil() {
+        return fenleil;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getMomey() {
-        return momey;
-    }
-
-    public void setMomey(String momey) {
-        this.momey = momey;
-    }
-
-    public String getFenlei() {
-        return fenlei;
-    }
-
-    public void setFenlei(String fenlei) {
-        this.fenlei = fenlei;
-    }
-
-    public BmobFile getPic() {
-        return pic;
-    }
-
-    public void setPic(BmobFile pic) {
-        this.pic = pic;
-    }
-
-    @Override
-    public String toString() {
-        return "\""+url+"\"";
+    public void setFenleil(String fenleil) {
+        this.fenleil = fenleil;
     }
 }

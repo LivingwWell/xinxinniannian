@@ -5,10 +5,12 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.NonNull;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,13 +20,17 @@ import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import com.example.lee.xinxinniannian.adapter.MirrorTransformation;
 import com.example.lee.xinxinniannian.ui.LikeActvity;
 import com.example.lee.xinxinniannian.ui.WebActivty;
 import com.example.lee.xinxinniannian.utils.Data;
 import com.example.lee.xinxinniannian.utils.SHOP;
+import com.example.lee.xinxinniannian.utils.StarsDao;
 import com.example.lee.xinxinniannian.utils.StaticClass;
+import com.scwang.smartrefresh.layout.SmartRefreshLayout;
+import com.scwang.smartrefresh.layout.api.RefreshLayout;
+import com.scwang.smartrefresh.layout.listener.OnLoadMoreListener;
+import com.scwang.smartrefresh.layout.listener.OnRefreshListener;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
@@ -37,17 +43,16 @@ import cn.bmob.v3.listener.FindListener;
 import cn.bmob.v3.listener.SaveListener;
 
 
-public class MainActivity extends Activity implements View.OnClickListener {
+public class MainActivity extends Activity {
     private ViewPager viewPager;
-    private String[] urls;
+    private long fristtime = 0;
     private List<ImageView> imageViewList;
-    private List<String> dataList;
     private TextView name, money, fenlei;
     private ImageButton imageButton;
     private ImageView tietle;
-    private String dizhi;
-    float y1 = 0;
-    float y2 = 0;
+    private String dizhi, starfenlei, starurl;
+    private SmartRefreshLayout smartRefreshLayout;
+    private StarsDao mdao;
     //小圆点
     private ImageView pint1, pint2, pint3, pint4, pint5, pint6, pint7, pint8, pint9, pint10;
 
@@ -58,12 +63,29 @@ public class MainActivity extends Activity implements View.OnClickListener {
         //去状态栏和标题
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        mdao=new StarsDao(MainActivity.this);
         //初始化Bmob
         Bmob.initialize(this, StaticClass.BMOB_APP_KEY);
         geturl();
 
     }
 
+    //双击返回键退出软件
+    public boolean onKeyUp(int KeyCode, KeyEvent event) {
+        switch (KeyCode) {
+            case KeyEvent.KEYCODE_BACK:
+                long secondTime = System.currentTimeMillis();
+                if (secondTime - fristtime > 2000) {
+                    Toast.makeText(MainActivity.this, "再按一次退出", Toast.LENGTH_SHORT).show();
+                    fristtime = secondTime;
+                    return true;
+                } else {
+                    System.exit(0);
+                }
+                break;
+        }
+        return super.onKeyUp(KeyCode, event);
+    }
 
     private List<SHOP> shops = null;
     Handler mHandler = new Handler() {
@@ -76,7 +98,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
             }
         }
     };
-
 
     //获取网络图片的地址
     private void geturl() {
@@ -98,17 +119,42 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     }
 
+    //自动加载首页
     public void Setdata(final int i) {
         BmobQuery<SHOP> query = new BmobQuery<>();
         query.findObjects(new FindListener<SHOP>() {
             @Override
-            public void done(List<SHOP> list, BmobException e) {
+            public void done(final List<SHOP> list, BmobException e) {
                 if (e == null) {
                     Log.d("bmob", "查询成功： " + list.get(i).getObjectId() + list.get(i).getName() + list.get(i).getFenlei() + list.get(i).getUrl());
                     name.setText(list.get(i).getName());
                     fenlei.setText(list.get(i).getFenlei());
                     money.setText(list.get(i).getMomey());
                     dizhi = list.get(i).getDizhi();
+                    starurl = list.get(i).getUrl();
+                    starfenlei = list.get(i).getFenlei();
+                    imageButton.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            Data data = new Data();
+                            data.setImagerUrl(list.get(i).getUrl());
+                            data.setWebUrl(list.get(i).getDizhi());
+                            data.save(new SaveListener<String>() {
+                                @Override
+                                public void done(String s, BmobException e) {
+                                    if (e == null) {
+                                        Toast.makeText(MainActivity.this, "已收藏", Toast.LENGTH_SHORT).show();
+                                    } else {
+                                        Log.i("bmob", "失败：" + e.getMessage() + "," + e.getErrorCode());
+                                    }
+                                }
+                            });
+                            mdao.add(starurl,dizhi,starfenlei);
+                            Intent intent = new Intent();
+                            intent.setClass(MainActivity.this, LikeActvity.class);
+                            startActivity(intent);
+                        }
+                    });
                 } else {
                     Log.d("bmob", "查询失败 " + e.getMessage() + "," + e.getErrorCode());
                 }
@@ -119,16 +165,12 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private void init() {
         imageViewList = new ArrayList<>();
         Log.d("urls", "传递成功： " + shops.get(0).getUrl());
-
         for (SHOP shop : shops) {
             ImageView img = new ImageView(MainActivity.this);
-            Picasso.with(MainActivity.this).load(shop.getUrl()).placeholder(R.drawable.white_bg).resize(500, 500).transform(new MirrorTransformation()).into(img);
+            Picasso.with(MainActivity.this).load(shop.getUrl()).placeholder(R.drawable.dark_bg).resize(500, 500).transform(new MirrorTransformation()).into(img);
             imageViewList.add(img);
-
         }
-
         initView();
-
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -149,8 +191,31 @@ public class MainActivity extends Activity implements View.OnClickListener {
         viewPager = (ViewPager) findViewById(R.id.viewPager);
         tietle = (ImageView) findViewById(R.id.tietle);
         imageButton = (ImageButton) findViewById(R.id.imageButton);
-        tietle.setOnClickListener(this);
-        imageButton.setOnClickListener(this);
+        smartRefreshLayout = (SmartRefreshLayout) findViewById(R.id.smartRefreshLayout);
+        //是否监听列表惯性滚动到底部时触发加载事件,显示下拉箭头
+        smartRefreshLayout.setEnableAutoLoadMore(false);
+        //下拉刷新
+        smartRefreshLayout.setOnRefreshListener(new OnRefreshListener() {
+            @Override
+            public void onRefresh(RefreshLayout refreshlayout) {
+                smartRefreshLayout.finishRefresh(2000);
+                init();
+            }
+        });
+        //上滑加载详情页
+        smartRefreshLayout.setOnLoadMoreListener(new OnLoadMoreListener() {
+            @Override
+            public void onLoadMore(@NonNull RefreshLayout refreshLayout) {
+                smartRefreshLayout.finishLoadMore(2000);
+                Intent intent = new Intent();
+                intent.setClass(MainActivity.this, WebActivty.class);
+                intent.putExtra("urls", dizhi);
+                startActivity(intent);
+            }
+        });
+
+/*        tietle.setOnClickListener(this);
+        imageButton.setOnClickListener(this);*/
 
         Setdata(0);
         //设置动画效果
@@ -165,19 +230,48 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 BmobQuery<SHOP> query = new BmobQuery<>();
                 query.findObjects(new FindListener<SHOP>() {
                     @Override
-                    public void done(List<SHOP> list, BmobException e) {
+                    public void done(final List<SHOP> list, BmobException e) {
                         if (e == null) {
                             Log.d("bmob", "查询成功： " + list.get(i).getObjectId() + list.get(i).getName() + list.get(i).getFenlei() + list.get(i).getUrl() + list.get(i).getDizhi());
                             name.setText(list.get(i).getName());
                             fenlei.setText(list.get(i).getFenlei());
                             money.setText(list.get(i).getMomey());
                             dizhi = list.get(i).getDizhi();
+                            starurl = list.get(i).getUrl();
+                            starfenlei = list.get(i).getFenlei();
+                            imageButton.setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    final Data data = new Data();
+                                    data.setImagerUrl(list.get(i).getUrl());
+                                    data.setWebUrl(list.get(i).getDizhi());
+                                    data.setFenleil(list.get(i).getFenlei());
+                                    data.save(new SaveListener<String>() {
+                                        @Override
+                                        public void done(String s, BmobException e) {
+                                            if (e == null) {
+
+                                            } else {
+                                                Log.i("bmob", "失败：" + e.getMessage() + "," + e.getErrorCode());
+                                            }
+                                        }
+                                    });
+
+                                 mdao.add(starurl,dizhi,starfenlei);
+
+                                    Intent intent = new Intent();
+                                    intent.setClass(MainActivity.this, LikeActvity.class);
+                                    startActivity(intent);
+                                }
+                            });
                         } else {
                             Log.d("bmob", "查询失败 " + e.getMessage() + "," + e.getErrorCode());
                         }
                     }
                 });
             }
+
+
 
 
             @Override
@@ -273,40 +367,26 @@ public class MainActivity extends Activity implements View.OnClickListener {
         });
     }
 
+    //点击收藏按钮，进入收藏夹
+    public boolean setStar(boolean star) {
+
+        return false;
+    }
+
     //监听事件
-    @Override
+/*    @Override
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.imageButton:
-                Intent intent=new Intent();
-                intent.setClass(MainActivity.this,LikeActvity.class);
-                startActivity(intent);
-                break;
-            case R.id.tietle:
-                Toast.makeText(MainActivity.this, "上滑", Toast.LENGTH_LONG).show();
-                break;
-        }
-    }
 
-    //滑动监听
-     public boolean onTouchEvent(MotionEvent event){
-        if(event.getAction()==MotionEvent.ACTION_DOWN){
-            y1=event.getY();
+
         }
-        if (event.getAction()==MotionEvent.ACTION_UP){
-            y2=event.getY();
-            if (y1-y2>0){
-                Intent intent = new Intent(this, WebActivty.class);
-                intent.putExtra("urls", dizhi);
-                //startActivity(new Intent(this, LikeActvity.class));
-                startActivity(intent);
-            }
-            if (y2-y1>0){
-                Toast.makeText(MainActivity.this, "向下滑", Toast.LENGTH_SHORT).show();
-            }
-        }
-        return super.onTouchEvent(event);
-     }
+    }*/
+//     public void queryData(){
+//
+//
+//     }
+
 
     //动画效果
     static class GalleyTransFormer implements ViewPager.PageTransformer {
